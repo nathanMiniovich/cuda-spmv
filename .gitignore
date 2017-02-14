@@ -1,1 +1,5 @@
 *.mtx
+*.o
+spmv
+vector_generator.sh
+test-implementation
