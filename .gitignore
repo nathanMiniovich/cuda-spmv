@@ -1,2 +1,6 @@
 *.mtx
 matrices-and-generator/
+*.o
+spmv
+vector_generator.sh
+test-implementation

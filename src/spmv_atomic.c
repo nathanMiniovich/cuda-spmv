@@ -19,15 +19,16 @@ __global__ void getMulAtomic_kernel(const int nnz, const int* coord_row, const i
 }
 
 void getMulAtomic(MatrixInfo * mat, MatrixInfo * vec, MatrixInfo * res, int blockSize, int blockNum){
-    /*Allocate here...*/
+	/*Allocate here...*/
 
-		/* Sample timing code */
-    struct timespec start, end;
-    clock_gettime(CLOCK_MONOTONIC_RAW, &start);
-    /*Invoke kernels...*/
+	/* Sample timing code */
+	struct timespec start, end;
+	clock_gettime(CLOCK_MONOTONIC_RAW, &start);
+	/*Invoke kernels...*/
+	getMulAtomic_kernel<<<blockNum, blockSize>>>(mat->nz, mat->rIndex, mat->cIndex, mat->val, vec->val, res->val);
 
-    cudaDeviceSynchronize();
-    clock_gettime(CLOCK_MONOTONIC_RAW, &end);
-    printf("Atomic Kernel Time: %lu micro-seconds\n", 1000000 * (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1000);
-    /*Deallocate.*/
+	cudaDeviceSynchronize();
+	clock_gettime(CLOCK_MONOTONIC_RAW, &end);
+	printf("Atomic Kernel Time: %lu micro-seconds\n", 1000000 * (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1000);
+	/*Deallocate.*/
 }
