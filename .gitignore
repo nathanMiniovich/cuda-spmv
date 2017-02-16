@@ -4,3 +4,4 @@ matrices-and-generator/
 spmv
 vector_generator.sh
 test-implementation
+*.txt
