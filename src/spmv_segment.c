@@ -19,25 +19,26 @@ __device__ void segmented_scan(const int lane, const int *rows, float *vals){
 		vals[threadIdx.x] += vals[threadIdx.x - 16];
 }
 
-__global__ void putProduct_kernel(/*Arguments*/){
-    /*Put your kernel(s) implementation here, you don't have to use exactly the
- * same kernel name */
-}
+__global__ void putProduct_kernel(const N, const int nnz, const int* coord_row, const int* coord_col, const float* A, const float* x, float* y){
+	extern __shared__ int rows[nnz];
+	extern __shared__ int vals[nnz]; 
+	extern __shared__ float rows_scan[N];
 
-
-__global__ void getMulAtomic_kernel(const int nnz, const int* coord_row, const int* coord_col, const float* A, const float* x, float* y){
         int thread_id = blockDim.x * blockIdx.x + threadIdx.x;
         int thread_num = blockDim.x * gridDim.x;
         int iter = nnz % thread_num ? nnz/thread_num + 1: nnz/thread_num;
 
         for(int i = 0; i < iter; i++){
                 int dataid = thread_id + i * thread_num;
+
+		rows[dataid] = coord_row[dataid];
+		rows_scan[dataid] = 0;
+
                 if(dataid < nnz){
                         float data = A[dataid];
                         int row = coord_row[dataid];
                         int col = coord_col[dataid];
-                        float tmp = data * x[col];
-                        atomicAdd(&y[row], tmp);
+                        vals[dataid] = data * x[col];
                 }
         }
 }
@@ -46,7 +47,26 @@ __global__ void getMulAtomic_kernel(const int nnz, const int* coord_row, const i
 
 void getMulScan(MatrixInfo * mat, MatrixInfo * vec, MatrixInfo * res, int blockSize, int blockNum){
     /*Allocate things...*/
+	int nnz = mat->nz;
+        int M = mat->M;
+	int N = mat->N;
+        int *coord_row, *coord_col;
+        float *A, *x, *y;
 
+        cudaMalloc((void**)&coord_row, (size_t)nnz*sizeof(int));
+        cudaMalloc((void**)&coord_col, (size_t)nnz*sizeof(int));
+        cudaMalloc((void**)&A, (size_t)nnz*sizeof(float));
+        cudaMalloc((void**)&x, (size_t)M*sizeof(float));
+        cudaMalloc((void**)&y, (size_t)M*sizeof(float));
+
+        cudaMemcpy(coord_row, mat->rIndex, (size_t)nnz*sizeof(int), cudaMemcpyHostToDevice);
+        cudaMemcpy(coord_col, mat->cIndex, (size_t)nnz*sizeof(int), cudaMemcpyHostToDevice);
+        cudaMemcpy(A, mat->val, (size_t)nnz*sizeof(float), cudaMemcpyHostToDevice);
+        cudaMemcpy(x, vec->val, (size_t)M*sizeof(float), cudaMemcpyHostToDevice);
+        cudaMemset(y, 0, (size_t)M*sizeof(float));
+	
+	// init vals and rows
+	
     struct timespec start, end;
     clock_gettime(CLOCK_MONOTONIC_RAW, &start);
     /*Invoke kernel(s)*/
