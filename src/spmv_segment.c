@@ -28,23 +28,20 @@ __global__ void putProduct_kernel(const int  N, const int nnz, const int* coord_
         int thread_num = blockDim.x * gridDim.x;
         int iter = nnz % thread_num ? nnz/thread_num + 1: nnz/thread_num;
 
-	int j = 0;
-
         for(int i = 0; i < iter; i++){
                 int dataid = thread_id + i * thread_num;
 
-		rows[j++] = coord_row[dataid];
+		rows[threadIdx.x] = coord_row[dataid];
 
                 if(dataid < nnz){
                         float data = A[dataid];
                         int row = coord_row[dataid];
                         int col = coord_col[dataid];
-                        vals[j++] = data * x[col];
+                        vals[threadIdx.x] = data * x[col];
                 }
         }
 	__syncthreads();
-	segmented_scan(thread_idx % 32, rows, vals, y);
-	
+	segmented_scan(thread_id % 32, rows, vals, y);
 }
 
 void getMulScan(MatrixInfo * mat, MatrixInfo * vec, MatrixInfo * res, int blockSize, int blockNum){
