@@ -134,8 +134,8 @@ int mm_read_unsymmetric_sparse(const char *fname, int *M_, int *N_, int *nz_,
 
 /* An M x N sparse matrix (or vector).
  * nz is the number of non-zero entries.
- * N is the number of rows.
- * M is the number of columns.
+ * M is the number of rows.
+ * N is the number of columns.
  * An entry at row r, column c, of value v is (r, c, v).
  * This is stored as corresponding indices of rIndex, cIndex and val.
  * ie. val[0] is the value of the matrix at row rIndex[0] and column cIndex[0].*/
