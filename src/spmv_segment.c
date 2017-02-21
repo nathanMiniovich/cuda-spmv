@@ -24,7 +24,7 @@ __global__ void putProduct_kernel(/*Arguments*/){
  * same kernel name */
 }
 
-
+/*
 __global__ void getMulAtomic_kernel(const int nnz, const int* coord_row, const int* coord_col, const float* A, const float* x, float* y){
         int thread_id = blockDim.x * blockIdx.x + threadIdx.x;
         int thread_num = blockDim.x * gridDim.x;
@@ -41,7 +41,7 @@ __global__ void getMulAtomic_kernel(const int nnz, const int* coord_row, const i
                 }
         }
 }
-
+*/
 
 
 void getMulScan(MatrixInfo * mat, MatrixInfo * vec, MatrixInfo * res, int blockSize, int blockNum){
