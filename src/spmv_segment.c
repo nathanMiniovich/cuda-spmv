@@ -1,5 +1,6 @@
 #include "genresult.cuh"
 #include <sys/time.h>
+#define MAX_PER_BLOCK 1024
 
 __device__ void segmented_scan(const int lane, const int *rows, float *vals, float * y){
 	// segmented scan in shared memory, assuming corresponding A values
@@ -20,29 +21,29 @@ __device__ void segmented_scan(const int lane, const int *rows, float *vals, flo
 }
 
 __global__ void putProduct_kernel(const int  N, const int nnz, const int* coord_row, const int* coord_col, const float* A, const float* x, float* y){
-	// dynamically allocated mem 
-	// rows - smem[c] 			(length nnz)
-	// vals - smem[nnz + c] 		(length nnz)
-	extern __shared__ smem[];
+	extern __shared__ rows[MAX_PER_BLOCK];
+	extern __shared__ vals[MAX_PER_BLOCK];
 
         int thread_id = blockDim.x * blockIdx.x + threadIdx.x;
         int thread_num = blockDim.x * gridDim.x;
         int iter = nnz % thread_num ? nnz/thread_num + 1: nnz/thread_num;
 
+	int j = 0;
+
         for(int i = 0; i < iter; i++){
                 int dataid = thread_id + i * thread_num;
 
-		smem[dataid] = coord_row[dataid];
+		rows[j++] = coord_row[dataid];
 
                 if(dataid < nnz){
                         float data = A[dataid];
                         int row = coord_row[dataid];
                         int col = coord_col[dataid];
-                        smem[nnz + dataid] = data * x[col];
+                        vals[j++] = data * x[col];
                 }
         }
 	__syncthreads();
-	segmented_scan(thread_idx % 32, smem, smem + nnz, y);
+	segmented_scan(thread_idx % 32, rows, vals, y);
 	
 }
 
