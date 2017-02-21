@@ -1,7 +1,7 @@
 #include "genresult.cuh"
 #include <sys/time.h>
 
-__device__ void segmented_scan(const int lane, const int *rows, float *vals){
+__device__ void segmented_scan(const int lane, const int *rows, float *vals, float * y){
 	// segmented scan in shared memory, assuming corresponding A values
 	// are loaded into the shared memory array vals, the row indices loaded
 	// into rows[] array in shared memory
@@ -19,10 +19,11 @@ __device__ void segmented_scan(const int lane, const int *rows, float *vals){
 		vals[threadIdx.x] += vals[threadIdx.x - 16];
 }
 
-__global__ void putProduct_kernel(const N, const int nnz, const int* coord_row, const int* coord_col, const float* A, const float* x, float* y){
-	extern __shared__ int rows[nnz];
-	extern __shared__ int vals[nnz]; 
-	extern __shared__ float rows_scan[N];
+__global__ void putProduct_kernel(const int  N, const int nnz, const int* coord_row, const int* coord_col, const float* A, const float* x, float* y){
+	// dynamically allocated mem 
+	// rows - smem[c] 			(length nnz)
+	// vals - smem[nnz + c] 		(length nnz)
+	extern __shared__ smem[];
 
         int thread_id = blockDim.x * blockIdx.x + threadIdx.x;
         int thread_num = blockDim.x * gridDim.x;
@@ -31,19 +32,19 @@ __global__ void putProduct_kernel(const N, const int nnz, const int* coord_row, 
         for(int i = 0; i < iter; i++){
                 int dataid = thread_id + i * thread_num;
 
-		rows[dataid] = coord_row[dataid];
-		rows_scan[dataid] = 0;
+		smem[dataid] = coord_row[dataid];
 
                 if(dataid < nnz){
                         float data = A[dataid];
                         int row = coord_row[dataid];
                         int col = coord_col[dataid];
-                        vals[dataid] = data * x[col];
+                        smem[nnz + dataid] = data * x[col];
                 }
         }
+	__syncthreads();
+	segmented_scan(thread_idx % 32, smem, smem + nnz, y);
+	
 }
-
-
 
 void getMulScan(MatrixInfo * mat, MatrixInfo * vec, MatrixInfo * res, int blockSize, int blockNum){
     /*Allocate things...*/
@@ -65,15 +66,14 @@ void getMulScan(MatrixInfo * mat, MatrixInfo * vec, MatrixInfo * res, int blockS
         cudaMemcpy(x, vec->val, (size_t)M*sizeof(float), cudaMemcpyHostToDevice);
         cudaMemset(y, 0, (size_t)M*sizeof(float));
 	
-	// init vals and rows
-	
-    struct timespec start, end;
-    clock_gettime(CLOCK_MONOTONIC_RAW, &start);
-    /*Invoke kernel(s)*/
+	// init vals and rows	
+    	struct timespec start, end;
+    	clock_gettime(CLOCK_MONOTONIC_RAW, &start);
+    	/*Invoke kernel(s)*/
+	putProduct_kernel<<<blockNum, blockSize, 2*nnz>>>(N, nnz, coord_row, coord_col, A, x, y);
+    	cudaDeviceSynchronize();
+    	clock_gettime(CLOCK_MONOTONIC_RAW, &end);
+    	printf("Segmented Kernel Time: %lu micro-seconds\n", 1000000 * (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1000);
 
-    cudaDeviceSynchronize();
-    clock_gettime(CLOCK_MONOTONIC_RAW, &end);
-    printf("Segmented Kernel Time: %lu micro-seconds\n", 1000000 * (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1000);
-
-    /*Deallocate, please*/
+    	/*Deallocate, please*/
 }
