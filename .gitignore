@@ -1,5 +1,5 @@
 *.mtx
-matrices-and-generator/
+test/
 *.o
 spmv
 vector_generator.sh
