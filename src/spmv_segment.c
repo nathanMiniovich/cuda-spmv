@@ -28,6 +28,7 @@ __global__ void putProduct_kernel(const int nnz, const int* coord_row, const int
 	extern __shared__ int rows[MAX_PER_BLOCK];
 	extern __shared__ float vals[MAX_PER_BLOCK];
 
+
         int thread_id = blockDim.x * blockIdx.x + threadIdx.x;
         int thread_num = blockDim.x * gridDim.x;
         int iter = nnz % thread_num ? nnz/thread_num + 1: nnz/thread_num;
