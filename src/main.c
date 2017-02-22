@@ -125,7 +125,7 @@ int doSpmv(MatrixInfo * mat, MatrixInfo * vec, MatrixInfo * res, AlgType how, in
 			printf("Copying matrix to verify sorting\n");
 			newMat = copyMat(mat);
 			printf("Converting matrix representation to row major order... (this can take a very long time, go have a coffee)\n");
-			columnToRowMajorOrder(newMat->rIndex, newMat->cIndex, newMat->val, 0, newMat->nz);
+			columnToRowMajorOrder(newMat->rIndex, newMat->cIndex, newMat->val, 0, newMat->nz - 1);
 			printf("Matrix converted, calculating... (have patience Heman, it will return)\n");
 			getMulScan(newMat, vec, res, blockSize, blockNum);
 			freeMatrixInfo(newMat);
