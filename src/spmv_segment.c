@@ -49,12 +49,6 @@ __global__ void putProduct_kernel(const int nnz, const int* coord_row, const int
         }
 }
 
-void columnToRowMajorOrder(int* rIndex, int* cIndex, float* val){
-
-
-	
-}
-
 void getMulScan(MatrixInfo * mat, MatrixInfo * vec, MatrixInfo * res, int blockSize, int blockNum){
 	int nnz = mat->nz;
         int numRows = mat->M;
@@ -67,8 +61,6 @@ void getMulScan(MatrixInfo * mat, MatrixInfo * vec, MatrixInfo * res, int blockS
         cudaMalloc((void**)&A, (size_t)nnz*sizeof(float));
         cudaMalloc((void**)&x, (size_t)numCols*sizeof(float));
         cudaMalloc((void**)&y, (size_t)numRows*sizeof(float));
-
-	columnToRowMajorOrder(mat->rIndex, mat->cIndex, mat->val);
 
         cudaMemcpy(coord_row, mat->rIndex, (size_t)nnz*sizeof(int), cudaMemcpyHostToDevice);
         cudaMemcpy(coord_col, mat->cIndex, (size_t)nnz*sizeof(int), cudaMemcpyHostToDevice);

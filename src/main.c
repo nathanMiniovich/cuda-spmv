@@ -50,12 +50,63 @@ int populateAlgType(const char * argv, AlgType * toPop){
 	}else return 0;
 }
 
+void columnToRowMajorOrder(int* rIndex, int* cIndex, float* val, int start, int end){
+	int pivot, j, tmp, i;
+	float ftmp;
+
+	if(start < end){
+		pivot = start;
+		i = start;
+		j = end;
+		
+		while(i < j){
+			while(rIndex[i] <= rIndex[pivot] && i < end){
+				i++;
+			}
+			while(rIndex[j] > rIndex[pivot]){
+				j--;
+			}
+			if(i < j){
+				tmp = rIndex[i];
+				rIndex[i] = rIndex[j];
+				rIndex[j] = tmp;
+				
+				tmp = cIndex[i];
+				cIndex[i] = cIndex[j];
+				cIndex[j] = tmp;
+
+				ftmp = val[i];
+				val[i] = val[j];
+				val[j] = ftmp;
+			}
+		}
+
+		tmp = rIndex[pivot];
+		rIndex[pivot] = rIndex[j];
+		rIndex[j] = tmp;
+
+		tmp = cIndex[pivot];
+		cIndex[pivot] = cIndex[j];
+		cIndex[j] = tmp;
+
+		ftmp = val[pivot];
+		val[pivot] = val[j];
+		val[j] = ftmp;
+
+		columnToRowMajorOrder(rIndex, cIndex, val, start, j-1);
+		columnToRowMajorOrder(rIndex, cIndex, val, j+1, end);
+	}
+}
+
 int doSpmv(MatrixInfo * mat, MatrixInfo * vec, MatrixInfo * res, AlgType how, int blockSize, int blockNum){
 	switch(how){
 		case ALG_ATOMIC:
 			getMulAtomic(mat, vec, res, blockSize, blockNum);
 			return 1;
 		case ALG_SEGMENT:
+			printf("Converting matrix representation to row major order... (this can take a very long time, go have a coffee)\n");
+			columnToRowMajorOrder(mat->rIndex, mat->cIndex, mat->val, 0, mat->nz);
+			printf("Matrix converted, calculating... (have patience Heman, it will return)\n");
 			getMulScan(mat, vec, res, blockSize, blockNum);
 			return 1;
 		case ALG_DESIGN:
