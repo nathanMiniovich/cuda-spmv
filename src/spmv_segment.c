@@ -20,7 +20,6 @@ __device__ void segmented_scan(const int lane, const int *rows, float *vals, flo
 	if ( lane >= 16 && rows[threadIdx.x] == rows[threadIdx.x - 16] )
 		vals[threadIdx.x] += vals[threadIdx.x - 16];
 
-	__syncthreads();
 
 	if ( lane == 31 || rows[threadIdx.x] != rows[threadIdx.x + 1] ){
 		atomicAdd(&y[rows[threadIdx.x]], vals[threadIdx.x]);
