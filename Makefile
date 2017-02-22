@@ -26,7 +26,7 @@ genresult.o: src/genresult.c src/spmv_atomic.c src/spmv_segment.c src/spmv_desig
 clean:
 	rm -f *.o spmv
 
-#Quick conveniences for submission etc.
+#Quick conveniences
 tar:
 	tar -cvf spmv_proj.tar *.c *.cuh *.pdf makefile
 

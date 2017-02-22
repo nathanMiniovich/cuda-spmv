@@ -2,12 +2,13 @@
 #include <sys/time.h>
 #define MAX_PER_BLOCK 1024
 
+/*
+ * segmented scan in shared memory, assuming corresponding A values
+ * are loaded into the shared memory array vals, the row indices loaded
+ * into rows[] array in shared memory
+ * lane is the thread offset in the thread warp 
+ */
 __device__ void segmented_scan(const int lane, const int *rows, float *vals, float * y){
-	// segmented scan in shared memory, assuming corresponding A values
-	// are loaded into the shared memory array vals, the row indices loaded
-	// into rows[] array in shared memory
-	// lane is the thread offset in the thread warp
-			
 	if ( lane >= 1 && rows[threadIdx.x] == rows[threadIdx.x - 1] )
 		vals[threadIdx.x] += vals[threadIdx.x - 1];
 	if ( lane >= 2 && rows[threadIdx.x] == rows[threadIdx.x - 2] )
@@ -28,7 +29,6 @@ __global__ void putProduct_kernel(const int nnz, const int* coord_row, const int
 	extern __shared__ int rows[MAX_PER_BLOCK];
 	extern __shared__ float vals[MAX_PER_BLOCK];
 
-
         int thread_id = blockDim.x * blockIdx.x + threadIdx.x;
         int thread_num = blockDim.x * gridDim.x;
         int iter = nnz % thread_num ? nnz/thread_num + 1: nnz/thread_num;
@@ -48,7 +48,6 @@ __global__ void putProduct_kernel(const int nnz, const int* coord_row, const int
 }
 
 void getMulScan(MatrixInfo * mat, MatrixInfo * vec, MatrixInfo * res, int blockSize, int blockNum){
-    /*Allocate things...*/
 	int nnz = mat->nz;
         int numRows = mat->M;
 	int numCols = mat->N;
@@ -67,16 +66,15 @@ void getMulScan(MatrixInfo * mat, MatrixInfo * vec, MatrixInfo * res, int blockS
         cudaMemcpy(x, vec->val, (size_t)numCols*sizeof(float), cudaMemcpyHostToDevice);
         cudaMemset(y, 0, (size_t)numRows*sizeof(float));
 	
-	// init vals and rows	
     	struct timespec start, end;
     	clock_gettime(CLOCK_MONOTONIC_RAW, &start);
-    	/*Invoke kernel(s)*/
+
 	putProduct_kernel<<<blockNum, blockSize>>>(nnz, coord_row, coord_col, A, x, y);
+
     	cudaDeviceSynchronize();
     	clock_gettime(CLOCK_MONOTONIC_RAW, &end);
     	printf("Segmented Kernel Time: %lu micro-seconds\n", 1000000 * (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1000);
 
-    	/*Deallocate, please*/
 	cudaMemcpy(res->val, y, (size_t)numRows*sizeof(float), cudaMemcpyDeviceToHost);
 
         cudaFree(coord_row);
@@ -84,5 +82,4 @@ void getMulScan(MatrixInfo * mat, MatrixInfo * vec, MatrixInfo * res, int blockS
         cudaFree(A);
         cudaFree(x);
         cudaFree(y);
-
 }
