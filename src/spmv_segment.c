@@ -2,27 +2,37 @@
 #include <sys/time.h>
 #define MAX_PER_BLOCK 1024
 
-__device__ void segmented_scan(const int lane, const int *rows, float *vals, float * y){
+__device__ void segmented_scan(const thread_num, const int iter, const int lane, const int *rows, float *vals, float * y){
 	// segmented scan in shared memory, assuming corresponding A values
 	// are loaded into the shared memory array vals, the row indices loaded
 	// into rows[] array in shared memory
 	// lane is the thread offset in the thread warp
-	
-	if ( lane >= 1 && rows[threadIdx.x] == rows[threadIdx.x - 1] )
-		vals[threadIdx.x] += vals[threadIdx.x - 1];
-	if ( lane >= 2 && rows[threadIdx.x] == rows[threadIdx.x - 2] )
-		vals[threadIdx.x] += vals[threadIdx.x - 2];
-	if ( lane >=4 && rows[threadIdx.x] == rows[threadIdx.x - 4] )
-		vals[threadIdx.x] += vals[threadIdx.x - 4];
-	if ( lane >= 8 && rows[threadIdx.x] == rows[threadIdx.x - 8] )
-		vals[threadIdx.x] += vals[threadIdx.x - 8];
-	if ( lane >= 16 && rows[threadIdx.x] == rows[threadIdx.x - 16] )
-		vals[threadIdx.x] += vals[threadIdx.x - 16];
+			
+	int thread_id = blockDim.x * blockIdx.x + threadIdx.x;
+	// int thread_num = blockDim.x * gridDim.x; 	
+	// int iter = nnz % thread_num ? nnz/thread_num + 1: nnz/thread_num;
+
+	for(int i = 0 ; i < iter ; i++){
+		int dataid = thread_id + i*thread_num;
+
+		if(dataid < nnz){		
+			if ( lane >= 1 && rows[threadIdx.x] == rows[threadIdx.x - 1] )
+				vals[threadIdx.x] += vals[threadIdx.x - 1];
+			if ( lane >= 2 && rows[threadIdx.x] == rows[threadIdx.x - 2] )
+				vals[threadIdx.x] += vals[threadIdx.x - 2];
+			if ( lane >=4 && rows[threadIdx.x] == rows[threadIdx.x - 4] )
+				vals[threadIdx.x] += vals[threadIdx.x - 4];
+			if ( lane >= 8 && rows[threadIdx.x] == rows[threadIdx.x - 8] )
+				vals[threadIdx.x] += vals[threadIdx.x - 8];
+			if ( lane >= 16 && rows[threadIdx.x] == rows[threadIdx.x - 16] )
+				vals[threadIdx.x] += vals[threadIdx.x - 16];
+		}
+	}
 }
 
 __global__ void putProduct_kernel(const int  N, const int nnz, const int* coord_row, const int* coord_col, const float* A, const float* x, float* y){
-	extern __shared__ rows[MAX_PER_BLOCK];
-	extern __shared__ vals[MAX_PER_BLOCK];
+	extern __shared__ int rows[MAX_PER_BLOCK];
+	extern __shared__ float vals[MAX_PER_BLOCK];
 
         int thread_id = blockDim.x * blockIdx.x + threadIdx.x;
         int thread_num = blockDim.x * gridDim.x;
@@ -31,17 +41,15 @@ __global__ void putProduct_kernel(const int  N, const int nnz, const int* coord_
         for(int i = 0; i < iter; i++){
                 int dataid = thread_id + i * thread_num;
 
-		rows[threadIdx.x] = coord_row[dataid];
-
                 if(dataid < nnz){
                         float data = A[dataid];
-                        int row = coord_row[dataid];
+			rows[threadIdx.x] = coord_row[dataid];
                         int col = coord_col[dataid];
                         vals[threadIdx.x] = data * x[col];
+			// __syncthreads();
+			segmented_scan(thread_num, iter, thread_id % 32, rows, vals, y);
                 }
         }
-	__syncthreads();
-	segmented_scan(thread_id % 32, rows, vals, y);
 }
 
 void getMulScan(MatrixInfo * mat, MatrixInfo * vec, MatrixInfo * res, int blockSize, int blockNum){
