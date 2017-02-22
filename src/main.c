@@ -98,16 +98,37 @@ void columnToRowMajorOrder(int* rIndex, int* cIndex, float* val, int start, int 
 	}
 }
 
+MatrixInfo * copyMat(MatrixInfo * mat){
+	MatrixInfo * newMat = (MatrixInfo *) malloc(sizeof(MatrixInfo));
+	newMat->rIndex = (int *) malloc(mat->nz*sizeof(int));
+	newMat->cIndex = (int *) malloc(mat->nz*sizeof(int));
+	newMat->val = (float *) malloc(mat->nz*sizeof(float));
+
+	newMat->M = mat->M;
+	newMat->N = mat->N;
+	newMat->nz = mat->nz;
+	
+	memcpy(newMat->rIndex, mat->rIndex, mat->nz*sizeof(int));
+	memcpy(newMat->cIndex, mat->cIndex, mat->nz*sizeof(int));
+	memcpy(newMat->val, mat->val, mat->nz*sizeof(float));
+
+	return newMat;
+}
+
 int doSpmv(MatrixInfo * mat, MatrixInfo * vec, MatrixInfo * res, AlgType how, int blockSize, int blockNum){
+	MatrixInfo * newMat;
 	switch(how){
 		case ALG_ATOMIC:
 			getMulAtomic(mat, vec, res, blockSize, blockNum);
 			return 1;
 		case ALG_SEGMENT:
+			printf("Copying matrix to verify sorting\n");
+			newMat = copyMat(mat);
 			printf("Converting matrix representation to row major order... (this can take a very long time, go have a coffee)\n");
-			columnToRowMajorOrder(mat->rIndex, mat->cIndex, mat->val, 0, mat->nz);
+			columnToRowMajorOrder(newMat->rIndex, newMat->cIndex, newMat->val, 0, newMat->nz);
 			printf("Matrix converted, calculating... (have patience Heman, it will return)\n");
-			getMulScan(mat, vec, res, blockSize, blockNum);
+			getMulScan(newMat, vec, res, blockSize, blockNum);
+			freeMatrixInfo(newMat);
 			return 1;
 		case ALG_DESIGN:
 			getMulDesign(mat, vec, res, blockSize, blockNum);
@@ -232,7 +253,6 @@ int main(int argc, char ** argv){
 		int o = verify(matrix->nz, matrix->M, matrix->rIndex, matrix->cIndex, matrix->val, vector->val, product->val);
 		printf("%d Error rows \n", o);
 	}
-
 
 	freeMatrixInfo(matrix);
 	freeMatrixInfo(vector);
