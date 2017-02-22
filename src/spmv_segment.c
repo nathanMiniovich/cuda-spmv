@@ -26,8 +26,8 @@ __device__ void segmented_scan(const int lane, const int *rows, float *vals, flo
 }
 
 __global__ void putProduct_kernel(const int nnz, const int* coord_row, const int* coord_col, const float* A, const float* x, float* y){
-	extern __shared__ int rows[MAX_PER_BLOCK];
-	extern __shared__ float vals[MAX_PER_BLOCK];
+	__shared__ int rows[MAX_PER_BLOCK];
+	__shared__ float vals[MAX_PER_BLOCK];
 
         int thread_id = blockDim.x * blockIdx.x + threadIdx.x;
         int thread_num = blockDim.x * gridDim.x;
@@ -42,7 +42,7 @@ __global__ void putProduct_kernel(const int nnz, const int* coord_row, const int
                         int col = coord_col[dataid];
                         vals[threadIdx.x] = data * x[col];
 			// __syncthreads();
-			segmented_scan(thread_num, iter, thread_id % 32, rows, vals, y);
+			segmented_scan(thread_id % 32, rows, vals, y);
                 }
         }
 }
