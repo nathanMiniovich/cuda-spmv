@@ -50,77 +50,14 @@ int populateAlgType(const char * argv, AlgType * toPop){
 	}else return 0;
 }
 
-void columnToRowMajorOrder(int* rIndex, int* cIndex, float* val, int start, int end){
-	int pivot, j, tmp, i;
-	float ftmp;
-
-	if(start < end){
-		pivot = start;
-		i = start;
-		j = end;
-		
-		while(i < j){
-			while(rIndex[i] <= rIndex[pivot] && i < end){
-				i++;
-			}
-			while(rIndex[j] > rIndex[pivot]){
-				j--;
-			}
-			if(i < j){
-				tmp = rIndex[i];
-				rIndex[i] = rIndex[j];
-				rIndex[j] = tmp;
-				
-				tmp = cIndex[i];
-				cIndex[i] = cIndex[j];
-				cIndex[j] = tmp;
-
-				ftmp = val[i];
-				val[i] = val[j];
-				val[j] = ftmp;
-			}
-		}
-
-		tmp = rIndex[pivot];
-		rIndex[pivot] = rIndex[j];
-		rIndex[j] = tmp;
-
-		tmp = cIndex[pivot];
-		cIndex[pivot] = cIndex[j];
-		cIndex[j] = tmp;
-
-		ftmp = val[pivot];
-		val[pivot] = val[j];
-		val[j] = ftmp;
-
-		columnToRowMajorOrder(rIndex, cIndex, val, start, j-1);
-		columnToRowMajorOrder(rIndex, cIndex, val, j+1, end);
-	}
-}
-
-MatrixInfo * copyMat(MatrixInfo * mat){
-	MatrixInfo * newMat = (MatrixInfo *) malloc(sizeof(MatrixInfo));
-	newMat->rIndex = (int *) malloc(mat->nz*sizeof(int));
-	newMat->cIndex = (int *) malloc(mat->nz*sizeof(int));
-	newMat->val = (float *) malloc(mat->nz*sizeof(float));
-
-	newMat->M = mat->M;
-	newMat->N = mat->N;
-	newMat->nz = mat->nz;
-	
-	memcpy(newMat->rIndex, mat->rIndex, mat->nz*sizeof(int));
-	memcpy(newMat->cIndex, mat->cIndex, mat->nz*sizeof(int));
-	memcpy(newMat->val, mat->val, mat->nz*sizeof(float));
-
-	return newMat;
-}
-
 int cmpTuple(const void * a, const void * b){
 	return (*(((MTuple *)a)->r) - *(((MTuple *)b)->r));
 }
 
 MatrixInfo * transferMat(MatrixInfo * mat){
+
 	MTuple * tupleMat = (MTuple *) malloc(mat->nz*sizeof(MTuple));
+
 	for (int i = 0 ; i < mat->nz ; i++){
 		tupleMat[i].r = &(mat->rIndex[i]);
 		tupleMat[i].c = &(mat->cIndex[i]);
@@ -143,6 +80,9 @@ MatrixInfo * transferMat(MatrixInfo * mat){
 		newMat->cIndex[i] = *(tupleMat[i].c);
 		newMat->val[i] = *(tupleMat[i].v);
 	}
+	
+	free(tupleMat);
+	
 	return newMat;
 }
 
@@ -154,12 +94,9 @@ int doSpmv(MatrixInfo * mat, MatrixInfo * vec, MatrixInfo * res, AlgType how, in
 			getMulAtomic(mat, vec, res, blockSize, blockNum);
 			return 1;
 		case ALG_SEGMENT:
-			printf("Copying matrix to verify sorting\n");
-			// newMat = copyMat(mat);
+			printf("Changing matrix to row major order...\n");
 			newMat = transferMat(mat);
-			printf("Converting matrix representation to row major order... (this can take a very long time, go have a coffee)\n");
-			// columnToRowMajorOrder(newMat->rIndex, newMat->cIndex, newMat->val, 0, newMat->nz - 1);
-			printf("Matrix converted, calculating... (have patience Heman, it will return)\n");
+			printf("Conversion complete.\n Starting calculation...\n");
 			getMulScan(newMat, vec, res, blockSize, blockNum);
 			freeMatrixInfo(newMat);
 			return 1;
