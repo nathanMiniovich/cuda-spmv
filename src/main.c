@@ -115,6 +115,38 @@ MatrixInfo * copyMat(MatrixInfo * mat){
 	return newMat;
 }
 
+int cmpTuple(const void * a, const void * b){
+	return (*(((MTuple *)a)->r) - *(((MTuple *)b)->r));
+}
+
+MatrixInfo * transferMat(MatrixInfo * mat){
+	MTuple * tupleMat = (MTuple *) malloc(mat->nz*sizeof(MTuple));
+	for (int i = 0 ; i < mat->nz ; i++){
+		tupleMat[i].r = &(mat->rIndex[i]);
+		tupleMat[i].c = &(mat->cIndex[i]);
+		tupleMat[i].v = &(mat->val[i]);
+	}
+
+	qsort(tupleMat, mat->nz, sizeof(MTuple), cmpTuple);
+
+	MatrixInfo * newMat = (MatrixInfo *) malloc(sizeof(MatrixInfo));
+	newMat->rIndex = (int *) malloc(mat->nz*sizeof(int));
+	newMat->cIndex = (int *) malloc(mat->nz*sizeof(int));
+	newMat->val = (float *) malloc(mat->nz*sizeof(float));
+
+	newMat->M = mat->M;
+	newMat->N = mat->N;
+	newMat->nz = mat->nz;
+	
+	for(int i = 0 ; i < mat->nz ; i++){
+		newMat->rIndex[i] = *(tupleMat[i].r);
+		newMat->cIndex[i] = *(tupleMat[i].c);
+		newMat->val[i] = *(tupleMat[i].v);
+	}
+	return newMat;
+}
+
+
 int doSpmv(MatrixInfo * mat, MatrixInfo * vec, MatrixInfo * res, AlgType how, int blockSize, int blockNum){
 	MatrixInfo * newMat;
 	switch(how){
@@ -123,9 +155,10 @@ int doSpmv(MatrixInfo * mat, MatrixInfo * vec, MatrixInfo * res, AlgType how, in
 			return 1;
 		case ALG_SEGMENT:
 			printf("Copying matrix to verify sorting\n");
-			newMat = copyMat(mat);
+			// newMat = copyMat(mat);
+			newMat = transferMat(mat);
 			printf("Converting matrix representation to row major order... (this can take a very long time, go have a coffee)\n");
-			columnToRowMajorOrder(newMat->rIndex, newMat->cIndex, newMat->val, 0, newMat->nz - 1);
+			// columnToRowMajorOrder(newMat->rIndex, newMat->cIndex, newMat->val, 0, newMat->nz - 1);
 			printf("Matrix converted, calculating... (have patience Heman, it will return)\n");
 			getMulScan(newMat, vec, res, blockSize, blockNum);
 			freeMatrixInfo(newMat);

@@ -144,6 +144,15 @@ typedef struct{
     float * val;
 } MatrixInfo;
 
+/* For sorting purposes... 
+ *
+ */
+typedef struct{
+	int * r;
+	int * c;
+	float * v;
+} MTuple;
+
 /* Reads a file at path, expecting a matrix-market matrix file.
  * Returns NULL on failure. If file IO fails, errno will be set.
  * freeMatrixInfo must be called on the return value on success.*/
