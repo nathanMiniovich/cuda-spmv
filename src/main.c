@@ -111,7 +111,7 @@ void convert2CSR(MatrixInfo * mat){
 	}
 
 	if(count == mat->nz){
-		printf("Success! Should appear before conversion complete\n");
+		printf("Conversion from COO to CSR is a success!\n");
 		CSRIndex[currRow+1] = count;
 	}
 
@@ -138,8 +138,9 @@ int doSpmv(MatrixInfo * mat, MatrixInfo * vec, MatrixInfo * res, AlgType how, in
 			printf("Changing sparse matrix format to CSR...\n");
 			newMat = transferMat(mat);
 			convert2CSR(newMat);
-			printf("Conversion complete.\nStarting calculation...\n"); 
+			printf("Starting calculation...\n"); 
 			getMulDesign(newMat, vec, res, blockSize, blockNum);
+			freeMatrixInfo(newMat);
 			return 1;
 		default:
 			return 0;
