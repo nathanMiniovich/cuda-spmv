@@ -86,6 +86,40 @@ MatrixInfo * transferMat(MatrixInfo * mat){
 	return newMat;
 }
 
+void convert2CSR(MatrixInfo * mat){
+	int * CSRIndex = (int *) malloc((mat->M+1)*sizeof(int));
+
+	// takes values 0 to M
+	int currRow = 0;
+	// number of nonzero elements seen so far
+	int count = 0;
+
+	CSRIndex[0] = 0;
+
+	int i = 0;
+	while(i < mat->nz){
+		int elemRow = mat->rIndex[i];
+		
+		if( currRow != elemRow ){
+				CSRIndex[currRow+1] = count;
+				currRow++;
+		}else{
+			count++;
+			i++;
+		}
+						
+	}
+
+	if(count == mat->nz){
+		printf("Success! Should appear before conversion complete\n");
+		CSRIndex[currRow+1] = count;
+	}
+
+	free(mat->rIndex);
+	mat->rIndex = CSRIndex;
+}
+
+
 
 int doSpmv(MatrixInfo * mat, MatrixInfo * vec, MatrixInfo * res, AlgType how, int blockSize, int blockNum){
 	MatrixInfo * newMat;
@@ -94,14 +128,18 @@ int doSpmv(MatrixInfo * mat, MatrixInfo * vec, MatrixInfo * res, AlgType how, in
 			getMulAtomic(mat, vec, res, blockSize, blockNum);
 			return 1;
 		case ALG_SEGMENT:
-			printf("Changing matrix to row major order...\n");
+			printf("Changing sparse matrix format to COO row major order...\n");
 			newMat = transferMat(mat);
-			printf("Conversion complete.\n Starting calculation...\n");
+			printf("Conversion complete.\nStarting calculation...\n");
 			getMulScan(newMat, vec, res, blockSize, blockNum);
 			freeMatrixInfo(newMat);
 			return 1;
 		case ALG_DESIGN:
-			getMulDesign(mat, vec, res, blockSize, blockNum);
+			printf("Changing sparse matrix format to CSR...\n");
+			newMat = transferMat(mat);
+			convert2CSR(newMat);
+			printf("Conversion complete.\nStarting calculation...\n"); 
+			getMulDesign(newMat, vec, res, blockSize, blockNum);
 			return 1;
 		default:
 			return 0;
